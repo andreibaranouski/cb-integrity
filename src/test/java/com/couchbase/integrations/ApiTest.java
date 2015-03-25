@@ -5,6 +5,11 @@ import java.net.URL;
 import java.util.Iterator;
 import java.util.List;
 
+import javax.ws.rs.core.Response;
+
+import org.apache.wink.json4j.JSONException;
+import org.apache.wink.json4j.OrderedJSONObject;
+
 import junit.framework.Assert;
 
 import com.couchbase.client.java.document.JsonDocument;
@@ -31,9 +36,9 @@ public class ApiTest extends LiteTestCase {
 
 	// https://github.com/couchbase/sync_gateway/issues/652
 	public void changeDocOnCB() throws JSchException, IOException,
-			SftpException, CouchbaseLiteException {
-		RemoteExecutor reSG = new RemoteExecutor("localhost", "andrei",
-				"resetm33");
+			SftpException, CouchbaseLiteException, JSONException {
+		RemoteExecutor reSG = new RemoteExecutor(sgmaster.getIp(), sgmaster.getUserSSH(),
+				sgmaster.getPasswordSSH());
 
 		List<Document> docs = LiteHelper.createDocuments(database, 1);
 
@@ -55,8 +60,6 @@ public class ApiTest extends LiteTestCase {
 		QueryEnumerator queryEnumerator = queryAllDocs.run();
 		Assert.assertEquals(1, queryEnumerator.getCount());
 
-		RestClient rc = new RestClient(sgmaster.buildSgUrl()
-				+ "sync_gateway/_all_docs");
 
 		for (Document doc : docs) {
 			JsonDocument cbdoc = JsonDocument.create(doc.getId(), null);
@@ -88,8 +91,17 @@ public class ApiTest extends LiteTestCase {
 			UnsavedRevision unsavedRev = row.getDocument().createRevision();
 			unsavedRev.save();
 		}
+		sleep(3);
+		RestClient rc = new RestClient(sgmaster.buildSgUrl());
+		Response response =rc.getClientResponse("sync_gateway/_all_docs", null);
 
-		Log.i(Log.TAG, rc.getResponse() + "");
+		OrderedJSONObject json = new OrderedJSONObject(
+				response.readEntity(String.class));
+		Log.i(Log.TAG, json.toString());
+		String regex = "\\{\"rows\":\\[\\],\"total_rows\":0,\"update_seq\":2\\}";
+		
+		assertTrue("Found in response:" + json,
+				json.toString().matches(regex));
 
 	}
 
@@ -106,8 +118,8 @@ public class ApiTest extends LiteTestCase {
 		// "/home/andrei/couchbase_src/sync_gateway/bin/sync_gateway",
 		// "src/main/java/sg_config.conf" });
 
-		RemoteExecutor re = new RemoteExecutor("localhost", "andrei",
-				"resetm33");
+		RemoteExecutor re = new RemoteExecutor(sgmaster.getIp(), sgmaster.getUserSSH(),
+				sgmaster.getPasswordSSH());
 
 		SGHelper.killAllSG(re);
 		SGHelper.runSG(re, SG_PATH, "src/main/java/sg_config.conf");

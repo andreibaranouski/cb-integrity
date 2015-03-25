@@ -76,7 +76,7 @@ public class LiteTestCase extends LiteTestCaseBase {
 			sleep(2);
 			CBHelper.createBucket(rc, DEFAULT_CB_BUCKET);
 			sleep(10);
-			cluster = CouchbaseCluster.create();
+			cluster = CouchbaseCluster.create(master.getIp());
 			bucket = cluster.openBucket(DEFAULT_CB_BUCKET, "");
 		} catch (Exception e) {
 			e.printStackTrace();
